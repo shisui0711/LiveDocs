@@ -5,6 +5,7 @@ import { liveblocks } from '../liveblocks';
 import { revalidatePath } from 'next/cache';
 import { getAccessType, parseStringify } from '../utils';
 import { redirect } from 'next/navigation';
+import { title } from 'process';
 
 
 
@@ -87,7 +88,21 @@ export const updateDocumentAccess = async ({ roomId, email, userType, updatedBy 
         
         const room = await liveblocks.updateRoom(roomId, { usersAccesses });
         if(room){
-            // TODO: Send a notify to the user
+            const notificationId = nanoid()
+
+            await liveblocks.triggerInboxNotification({
+                userId: email,
+                kind: '$documentAccess',
+                subjectId: notificationId,
+                activityData: {
+                    userType,
+                    title: `Bạn đã được cấp quyền ${userType ==='editor' ? 'sửa' : 'xem'} cho tài liệu ${room.metadata.title} bởi ${updatedBy.name}`,
+                    updatedBy: updatedBy.name,
+                    avatar: updatedBy.avatar,
+                    email: updatedBy.email,
+                },
+                roomId
+            })
         }
         revalidatePath(`/documents/${roomId}`)
         return parseStringify(room)
